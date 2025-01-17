@@ -1,4 +1,5 @@
 import typing
+import dataclasses
 from uuid import uuid4
 from django.http import JsonResponse
 from rest_framework import status
@@ -13,6 +14,14 @@ class Response(JsonResponse):
                     error_details: dict = None, 
                 **kwargs):
         from morest.middlewares.requestid import RequestID
+        
+        if isinstance(data, list):
+            if all(filter(dataclasses.is_dataclass, data)):
+                data = list(map(dataclasses.asdict, data))
+
+        if dataclasses.is_dataclass(data):
+            data = dataclasses.asdict(data)
+
         data = {
             "data": data,
             "status": status,
