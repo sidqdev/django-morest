@@ -44,3 +44,25 @@ class AlreadyExistsError(BaseError):
             }
         )
 
+
+class NotFoundError(BaseError):
+    status_code = status.HTTP_404_NOT_FOUND
+    message = 'Not found error'
+    status = 'not_found'
+
+    @classmethod
+    def with_object_details(cls, object: str, key: str, value: str):
+        return cls(
+            message='{object} with {key} "{value}" not found'.format(
+                object=object, 
+                key=key,
+                value=value,
+            ),
+            error_details={
+                "object": object,
+                "key": key,
+                "value": value,
+            }
+        )
+    
+

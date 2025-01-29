@@ -16,7 +16,7 @@ class Response(JsonResponse):
         from morest.middlewares.requestid import RequestID
         
         if isinstance(data, list):
-            if all(filter(dataclasses.is_dataclass, data)):
+            if all(map(dataclasses.is_dataclass, data)):
                 data = list(map(dataclasses.asdict, data))
 
         if dataclasses.is_dataclass(data):
