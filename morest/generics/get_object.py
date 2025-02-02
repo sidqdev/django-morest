@@ -1,6 +1,5 @@
 import typing
 from morest.errors import NotFoundError
-from django.db.models.manager import BaseManager
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from django.shortcuts import get_object_or_404 as _get_object_or_404

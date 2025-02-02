@@ -16,6 +16,8 @@ class PaginatedSerializedData:
 
 
 class PaginationSerializer(serializers.Serializer):
+    rows_name = 'rows'
+
     page = serializers.IntegerField(required=False)
     limit = serializers.IntegerField(required=False)
 
@@ -36,8 +38,12 @@ class PaginationSerializer(serializers.Serializer):
         
         obj_serializer = lambda obj: serializer().to_representation(obj, **kwargs) if serializer is not None else obj 
 
-        return PaginatedSerializedData(
+        data = PaginatedSerializedData(
             rows=[obj_serializer(x) for x in rows],
             rows_count=len(rows),
             pages_count=math.ceil(total_rows_count/limit)
         )
+        data.__dataclass_fields__['rows'].name = self.rows_name
+        setattr(data, self.rows_name, data.rows)
+        return data
+
