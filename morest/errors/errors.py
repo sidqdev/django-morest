@@ -14,7 +14,7 @@ class InsufficientBalanceError(BaseError):
     status = 'insufficient_balance'
 
     @classmethod
-    def with_balance_details(cls, current_balance: float, required_balance: float, **kwargs):
+    def with_balance_details(cls, current_balance: float, required_balance: float, **kwargs) -> "InsufficientBalanceError":
         return cls(
             error_details={
                 "current_balance": current_balance,
@@ -30,7 +30,7 @@ class AlreadyExistsError(BaseError):
     status = 'data_already_exists'
 
     @classmethod
-    def with_object_details(cls, object: str, key: str, value: str):
+    def with_object_details(cls, object: str, key: str, value: str) -> "AlreadyExistsError":
         return cls(
             message='{object} with {key} "{value}" already exists'.format(
                 object=object, 
@@ -51,17 +51,12 @@ class NotFoundError(BaseError):
     status = 'not_found'
 
     @classmethod
-    def with_object_details(cls, object: str, key: str, value: str):
+    def with_object_details(cls, object: str, filters: dict) -> "NotFoundError":
         return cls(
-            message='{object} with {key} "{value}" not found'.format(
-                object=object, 
-                key=key,
-                value=value,
-            ),
+            message=f'{object} with {filters=} not found',
             error_details={
                 "object": object,
-                "key": key,
-                "value": value,
+                "filters": filters,
             }
         )
     

@@ -36,8 +36,8 @@ class ExceptionMiddleware:
         try:
             response: HttpResponse = self.get_response(request)
             return response
-        except Exception as e:
-            self._handle_exception(e)
+        except BaseException as e:
+            return self._handle_exception(e)
 
 
 def DRFExceptionMiddleware(exc, context):

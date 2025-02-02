@@ -3,6 +3,7 @@ import dataclasses
 from uuid import uuid4
 from django.http import JsonResponse
 from rest_framework import status
+from morest.core import MorestJSONEncoder
 
 
 class Response(JsonResponse):
@@ -15,13 +16,6 @@ class Response(JsonResponse):
                 **kwargs):
         from morest.middlewares.requestid import RequestID
         
-        if isinstance(data, list):
-            if all(map(dataclasses.is_dataclass, data)):
-                data = list(map(dataclasses.asdict, data))
-
-        if dataclasses.is_dataclass(data):
-            data = dataclasses.asdict(data)
-
         data = {
             "data": data,
             "status": status,
@@ -32,7 +26,7 @@ class Response(JsonResponse):
         if not 200 <= status_code <= 299:
             data['error_details'] = error_details
 
-        super().__init__(data, status=status_code, **kwargs)
+        super().__init__(data, status=status_code, encoder=MorestJSONEncoder, **kwargs)
 
     @classmethod
     def validation_error(cls, error_details: dict, status_code: int = status.HTTP_400_BAD_REQUEST) -> "Response":
