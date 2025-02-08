@@ -18,8 +18,8 @@ class PaginatedSerializedData:
 class PaginationSerializer(serializers.Serializer):
     rows_name = 'rows'
 
-    page = serializers.IntegerField(required=False)
-    limit = serializers.IntegerField(required=False)
+    page = serializers.IntegerField(required=False, min_value=1, write_only=True)
+    limit = serializers.IntegerField(required=False, min_value=1, write_only=True)
 
     def paginate(self, qs: typing.Union[BaseManager[T], typing.List[T]], serializer: serializers.Serializer = None, **kwargs) -> PaginatedSerializedData:
         page = self.validated_data.get('page', 1)
