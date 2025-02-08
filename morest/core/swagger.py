@@ -8,5 +8,7 @@ def build_response_serializer(serializer) -> serializers.Serializer:
         status_code = serializers.IntegerField()
         request_id = serializers.CharField()
         message = serializers.CharField()
-    
+
+        class Meta:
+            ref_name = f"Response{serializer.__name__}"
     return Response

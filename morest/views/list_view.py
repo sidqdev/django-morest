@@ -56,16 +56,19 @@ class ListFilterView(APIView):
     
     @classmethod
     def as_view(cls, **initkwargs):
-        view = super().as_view(**initkwargs)
         try:
             from drf_yasg.utils import swagger_auto_schema
-            view = swagger_auto_schema(
-                method='get',
-                query_serializer=cls.get_filter_serializer(cls, None),
-                responses={
-                    200: swagger.build_response_serializer(cls.get_serializer(cls, None))
-                }
-            )(view)
+            class viewcls(cls):
+                @swagger_auto_schema(
+                    query_serializer=cls.filter_serializer,
+                    responses={
+                        200: swagger.build_response_serializer(cls.get_serializer(cls, None))
+                    }
+                )
+                def get(self, request):
+                    return super().get(request)
+            cls = viewcls
         except ImportError:
             pass
-        return view
+        return super().as_view(**initkwargs)
+    
