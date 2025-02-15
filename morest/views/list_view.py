@@ -1,8 +1,9 @@
+import typing
 from django.http import HttpRequest
 from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework.serializers import Serializer
-from morest.utils import PaginationSerializer
+from morest.utils import PaginationSerializer, SearchSerializer
 from morest.api import Response
 from morest.core import get_queryset, swagger
 
@@ -10,7 +11,8 @@ class ListFilterView(APIView):
     queryset: QuerySet
     serializer: Serializer
     filter_serializer: Serializer
-
+    search_fields: typing.List[str] = ()
+    
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return get_queryset(self.queryset)
     
@@ -18,13 +20,26 @@ class ListFilterView(APIView):
         return self.filter_serializer
     
     def get_filters(self, request: HttpRequest, filters: dict):
-        if issubclass(self.get_filter_serializer(request), PaginationSerializer):
+        s = self.get_filter_serializer(request)
+        if issubclass(s, PaginationSerializer):
             filters.pop("page", None)
             filters.pop("limit", None)
+        
+        if issubclass(s, SearchSerializer):
+            filters.pop("q", None)
+
         return filters
+    
+    def get_search_fields(self, request: HttpRequest):
+        return self.search_fields
     
     def filter_queryset(self, request: HttpRequest, qs: QuerySet, filters: dict) -> QuerySet:
         return qs.filter(**filters).all()
+    
+    def get_search_result(self, request: HttpRequest, qs: QuerySet, search_fields: typing.List[str], filter_serializer: SearchSerializer) -> QuerySet:
+        if not isinstance(filter_serializer, SearchSerializer):
+            return qs
+        return filter_serializer.filter(qs, search_fields)
     
     def get_serializer(self, request: HttpRequest) -> Serializer:
         return self.serializer
@@ -52,6 +67,10 @@ class ListFilterView(APIView):
         
         filters = self.get_filters(request, data.validated_data.copy())
         qs = self.filter_queryset(request, qs, filters)
+
+        search_fields = self.get_search_fields(request)
+        qs = self.get_search_result(request, qs, search_fields, data)
+
         return Response(self.get_response_data(request, qs, data))
     
     @classmethod
