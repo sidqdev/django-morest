@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.serializers import Serializer
 from morest.utils import PaginationSerializer, SearchSerializer
 from morest.api import Response
-from morest.core import get_queryset, swagger
+from morest.core import docs, get_queryset
 
 class ListFilterView(APIView):
     queryset: QuerySet
@@ -76,14 +76,8 @@ class ListFilterView(APIView):
     @classmethod
     def as_view(cls, **initkwargs):
         try:
-            from drf_yasg.utils import swagger_auto_schema
             class viewcls(cls):
-                @swagger_auto_schema(
-                    query_serializer=cls.filter_serializer,
-                    responses={
-                        200: swagger.build_response_serializer(cls.get_serializer(cls, None))
-                    }
-                )
+                @docs.schema(request_query=cls.filter_serializer, response=cls.get_serializer(cls, None))
                 def get(self, request):
                     return super().get(request)
             cls = viewcls
