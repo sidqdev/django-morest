@@ -3,7 +3,7 @@ from django.http import HttpRequest
 from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework.serializers import Serializer
-from morest.utils import PaginationSerializer, SearchSerializer
+from morest.utils import PaginationSerializer, SearchSerializer, OrderSerializer
 from morest.api import Response
 from morest.core import docs, get_queryset
 
@@ -12,7 +12,10 @@ class ListFilterView(APIView):
     serializer: Serializer
     filter_serializer: Serializer
     search_fields: typing.List[str] = ()
-    
+    rows_name: str = None
+    order_fields: list = None
+
+
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return get_queryset(self.queryset)
     
@@ -28,6 +31,9 @@ class ListFilterView(APIView):
         if issubclass(s, SearchSerializer):
             filters.pop("q", None)
 
+        if issubclass(s, OrderSerializer):
+            filters.pop("order_by", None)
+
         return filters
     
     def get_search_fields(self, request: HttpRequest):
@@ -41,17 +47,25 @@ class ListFilterView(APIView):
             return qs
         return filter_serializer.filter(qs, search_fields)
     
+    def get_order_fields(self, request) -> typing.List[str]:
+        return self.order_fields
+    
     def get_serializer(self, request: HttpRequest) -> Serializer:
         return self.serializer
     
     def paginate(self, request: HttpRequest, filter_serializer: PaginationSerializer, qs: QuerySet):
         serializer = self.get_serializer(request)
-        return filter_serializer.paginate(qs=qs, serializer=serializer)
+        return filter_serializer.paginate(qs=qs, serializer=serializer, rows_name=self.rows_name)
     
     def serialize(self, request: HttpRequest, qs: QuerySet):
         serializer = self.get_serializer(request)
         return [serializer().to_representation(x) for x in qs]
     
+    def order(self, request: HttpRequest, qs: QuerySet, order_fields: typing.List[str], filter_serializer: OrderSerializer):
+        if not isinstance(filter_serializer, OrderSerializer):
+            return qs
+        return filter_serializer.order(qs, order_fields)
+
     def get_response_data(self, request: HttpRequest, qs: QuerySet, data: dict):
         if isinstance(data, PaginationSerializer):
             return self.paginate(request=request, filter_serializer=data, qs=qs)
@@ -70,6 +84,9 @@ class ListFilterView(APIView):
 
         search_fields = self.get_search_fields(request)
         qs = self.get_search_result(request, qs, search_fields, data)
+
+        order_fields = self.get_order_fields(request)
+        qs = self.order(request, qs, order_fields, data)
 
         return Response(self.get_response_data(request, qs, data))
     

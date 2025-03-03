@@ -61,3 +61,14 @@ class NotFoundError(BaseError):
         )
     
 
+class ValidationError(BaseError):
+    status_code = status.HTTP_400_BAD_REQUEST
+    message = 'Validation error'
+    status = 'validation_error'
+
+
+class FieldNotFoundError(BaseError):
+    status_code = status.HTTP_406_NOT_ACCEPTABLE
+    message = 'Field not found'
+    status = 'field_not_found'
+    
