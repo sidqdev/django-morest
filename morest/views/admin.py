@@ -1,7 +1,3 @@
-from django.http import HttpRequest
-from rest_framework import permissions
-
-
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponse
 from django.contrib import admin
@@ -9,6 +5,8 @@ from django.forms import Form
 
 from rest_framework.views import APIView
 from rest_framework.parsers import FormParser
+from rest_framework import permissions
+
 
 
 class AdminFormView(APIView):
