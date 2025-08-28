@@ -1,4 +1,5 @@
 ## django-morest - make your api more rest
+### Need to install pycryptodome to be able to use EncryptedTextField
 
 #### v0.0.1 - Basic functionality of api
 
