@@ -26,7 +26,14 @@ class Response(JsonResponse):
         if not 200 <= status_code <= 299:
             data['error_details'] = error_details
 
-        super().__init__(data, status=status_code, encoder=MorestJSONEncoder, **kwargs)
+        data = {
+            "data": data,
+            "status": status_code,
+            "encoder": MorestJSONEncoder,
+            **kwargs
+        }
+        
+        super().__init__(**data)
 
     @classmethod
     def validation_error(cls, error_details: dict, status_code: int = status.HTTP_400_BAD_REQUEST) -> "Response":
