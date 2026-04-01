@@ -30,6 +30,7 @@ def __build_paginator_serializer(rows_name: str, serializer) -> serializers.Seri
             super().__init__(instance, data, **kwargs)
 
         rows_count = serializers.IntegerField()
+        total_count = serializers.IntegerField()
         pages_count = serializers.IntegerField()
 
         class Meta:

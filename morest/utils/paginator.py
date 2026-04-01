@@ -12,6 +12,7 @@ T = typing.TypeVar("T")
 class PaginatedSerializedData:
     rows: typing.List[typing.Union[dict, T]]
     rows_count: int
+    total_count: int
     pages_count: int
 
 
@@ -44,6 +45,7 @@ class PaginationSerializer(serializers.Serializer):
         data = PaginatedSerializedData(
             rows=[obj_serializer(x) for x in rows],
             rows_count=len(rows),
+            total_count=total_rows_count,
             pages_count=math.ceil(total_rows_count/limit)
         )
         data.__dataclass_fields__['rows'].name = rows_name
