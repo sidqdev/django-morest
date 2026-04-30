@@ -67,7 +67,7 @@ class ListFilterView(APIView):
     
     def paginate(self, request: HttpRequest, filter_serializer: PaginationSerializer, qs: QuerySet):
         serializer = self.get_serializer(request)
-        return filter_serializer.paginate(qs=qs, serializer=serializer, serializer_context=self.get_serializer_context(request=request))
+        return filter_serializer.paginate(qs=qs, serializer=serializer, serializer_context=self.get_serializer_context(request=request), rows_name=self.rows_name)
     
     def serialize(self, request: HttpRequest, qs: QuerySet):
         serializer = self.get_serializer(request)
