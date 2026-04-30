@@ -13,7 +13,7 @@ project_urls = {
 
 setup(
     name='django-morest',
-    version='0.1.5',
+    version='0.2.0',
     author='Sidq',
     author_email='abba.dmytro@gmail.com',
     description='Django api manager and unifier',
@@ -28,7 +28,9 @@ setup(
     ],
     install_requires=[
         "django",
-        "djangorestframework"
+        "djangorestframework",
+        "PyJWT>=2,<3",
+        "drf-yasg",
     ],
     package_data={'morest': ['templates/*.html']},
     include_package_data=True,

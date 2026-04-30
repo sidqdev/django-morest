@@ -7,7 +7,8 @@
 - request ids
 - reusable query serializers for pagination, search, and ordering
 - list/filter API views
-- optional schema helpers for `drf-yasg`
+- schema and Swagger helpers for `drf-yasg`
+- JWT and bearer-token authentication helpers
 - a simple encrypted text model field
 
 ## Installation
@@ -26,6 +27,8 @@ pip install pycryptodome
 
 - Django
 - djangorestframework
+- drf-yasg
+- PyJWT
 
 ## Quick Start
 
@@ -37,6 +40,7 @@ from morest.core import presettings
 INSTALLED_APPS = [
     ...,
     "morest",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [
@@ -58,6 +62,18 @@ from morest.core import presettings
 
 urlpatterns = [
     *presettings.HEALTHCHECK_URLPATTERNS,
+    ...,
+]
+```
+
+If you want the built-in Swagger UI, connect `morest.core.docs.schema_view` in your project URLs.
+
+```python
+from django.urls import path
+from morest.core import docs
+
+urlpatterns = [
+    path("swagger/", docs.schema_view.with_ui("swagger")),
     ...,
 ]
 ```
@@ -101,6 +117,40 @@ This currently sets:
 ```
 
 That keeps DRF exceptions inside the same `morest` JSON response format.
+
+### `INSTALLED_APPS`
+
+For the core response, middleware, and view helpers:
+
+```python
+INSTALLED_APPS = [
+    ...,
+    "morest",
+]
+```
+
+Add `drf_yasg` when you use `morest.core.docs.schema_view`, `docs.schema(...)`, or the Swagger UI.
+
+```python
+INSTALLED_APPS = [
+    ...,
+    "morest",
+    "drf_yasg",
+]
+```
+
+Add `morest.bearertoken` only when you want the bundled database-backed bearer token model.
+
+```python
+INSTALLED_APPS = [
+    ...,
+    "morest",
+    "morest.bearertoken",
+    "drf_yasg",
+]
+```
+
+After adding `morest.bearertoken`, run migrations for your project.
 
 ### `LOGGING`
 
@@ -263,6 +313,8 @@ All `BaseError` subclasses can be raised inside views or helper functions. `Exce
 - `AlreadyExistsError` -> HTTP `409`
 - `InsufficientBalanceError` -> HTTP `402`
 - `FieldNotFoundError` -> HTTP `406`
+- `AccessTokenIsInvalidError` -> HTTP `401`
+- `RefreshTokenIsInvalidError` -> HTTP `401`
 
 ### Raise a built-in error
 
@@ -583,13 +635,47 @@ user = get_objects_or_404(User.objects, with_error_details=True, id=user_id)
 
 If `with_error_details=True`, the raised `NotFoundError` includes the lookup filters.
 
-## Schema Helper for `drf-yasg`
+## Swagger and Schema Helpers
 
 Import from:
 
 ```python
 from morest.core import docs
 ```
+
+### Swagger UI
+
+`morest.core.docs` exposes a ready `drf-yasg` schema view.
+
+```python
+from django.urls import path
+from morest.core import docs
+
+urlpatterns = [
+    path("swagger/", docs.schema_view.with_ui("swagger")),
+]
+```
+
+Make sure `drf_yasg` is enabled in your Django settings.
+
+```python
+INSTALLED_APPS = [
+    ...,
+    "morest",
+    "drf_yasg",
+]
+```
+
+The built-in `schema_view` is configured with:
+
+- title: `Swagger API`
+- version: `v1`
+- `SessionAuthentication`
+- `IsAdminUser`
+
+That means the Swagger UI is intended for authenticated admin users by default.
+
+### View method schemas
 
 Use `docs.schema(...)` to wrap view methods with a response envelope schema.
 
@@ -618,13 +704,17 @@ class UserCreateView(APIView):
 
 If the request serializer inherits `PaginationSerializer`, `docs.schema()` wraps the response in a paginated envelope automatically.
 
-`drf-yasg` is optional. If it is not installed, `ListFilterView.as_view()` silently skips schema decoration.
+`ListFilterView.as_view()` also uses `docs.schema(...)` for generated list endpoint docs when `drf-yasg` is installed.
 
-## Built-in Auth Views
+## Authentication
 
-The package ships simple session-based auth views under `morest.views.auth.session`.
+The package ships session auth views, JWT helpers, and an optional database-backed bearer token app.
 
-### `LoginView`
+### Session auth views
+
+Session-based auth views live under `morest.views.auth.session`.
+
+#### `LoginView`
 
 - `GET` returns the current authenticated user serialized by `UserSerializer`
 - `POST` expects `username` and `password`
@@ -635,10 +725,129 @@ Serializer validation errors are returned via:
 Response.validation_error(serializer.errors)
 ```
 
-### `LogoutView`
+#### `LogoutView`
 
 - `POST` logs out the current session user
 - returns `Response.from_status("ok")`
+
+### JWT authentication
+
+Import from:
+
+```python
+from morest.authentication import JWTAuthentication, get_jwt_manager
+from morest.views import RefreshTokenView
+```
+
+Configure token secrets in Django settings.
+
+```python
+JWT_ACCESS_TOKEN_SECRET = "change-me-access"
+JWT_REFRESH_TOKEN_SECRET = "change-me-refresh"
+
+# Optional, in seconds. If omitted, tokens do not expire.
+JWT_ACCESS_TOKEN_TTL = 60 * 15
+JWT_REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30
+```
+
+Use `JWTAuthentication` in DRF settings or on a view.
+
+```python
+REST_FRAMEWORK = {
+    **presettings.MOREST_REST_FRAMEWORK,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "morest.authentication.JWTAuthentication",
+    ],
+}
+```
+
+Clients authenticate with:
+
+```text
+Authorization: JWT <access_token>
+```
+
+Create a token pair for a user:
+
+```python
+from morest.authentication import JWTAuthentication
+
+
+jwt_pair = JWTAuthentication().authorize(user)
+```
+
+Expose the refresh endpoint in your URLs:
+
+```python
+from django.urls import path
+from morest.views import RefreshTokenView
+
+urlpatterns = [
+    path("auth/refresh/", RefreshTokenView.as_view()),
+]
+```
+
+Request body:
+
+```json
+{
+  "refresh_token": "..."
+}
+```
+
+Response data:
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "..."
+}
+```
+
+Invalid access or refresh tokens raise `AccessTokenIsInvalidError` or `RefreshTokenIsInvalidError` and return a standardized `401` response.
+
+### Bearer token authentication
+
+Import from:
+
+```python
+from morest.authentication import BearerTokenAuthentication
+```
+
+Enable the bundled token model when you want database-backed bearer tokens.
+
+```python
+INSTALLED_APPS = [
+    ...,
+    "morest",
+    "morest.bearertoken",
+]
+```
+
+Then run migrations.
+
+```bash
+python manage.py migrate
+```
+
+Use the authentication class in DRF settings or on a view.
+
+```python
+REST_FRAMEWORK = {
+    **presettings.MOREST_REST_FRAMEWORK,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "morest.authentication.BearerTokenAuthentication",
+    ],
+}
+```
+
+Clients authenticate with:
+
+```text
+Authorization: Bearer <token>
+```
+
+`BearerTokenAuthentication` accepts active tokens whose `expires_at` is empty or in the future, and rejects inactive users.
 
 ## Admin Form View
 
@@ -783,8 +992,9 @@ Common imports:
 
 ```python
 from morest.api import Response
-from morest.core import docs, get_queryset, search_in_queryset, MorestJSONEncoder, presettings
+from morest.authentication import BearerTokenAuthentication, JWTAuthentication, get_jwt_manager
+from morest.core import JWTManager, JWTPair, docs, get_queryset, search_in_queryset, MorestJSONEncoder, presettings
 from morest.errors import *
 from morest.utils import PaginationSerializer, SearchSerializer, OrderSerializer, PaginationSearchSerializer
-from morest.views import ListFilterView, AdminFormView
+from morest.views import ListFilterView, AdminFormView, RefreshTokenView
 ```

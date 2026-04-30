@@ -8,14 +8,9 @@ T = typing.TypeVar("T")
 
 
 class OrderSerializer(serializers.Serializer):
-    order_fields: typing.List[str] = None
-
     order_by = serializers.ListField(child=serializers.CharField(), required=False, write_only=True, allow_empty=True)
     
-    def _validate_order_by(self, order_by: typing.List[str], order_fields: typing.List[str], **kwargs):
-        if order_fields is None:
-            order_fields = self.order_fields
-            
+    def _validate_order_by(self, order_by: typing.List[str], order_fields: typing.List[str], **kwargs):            
         order_by = map(lambda x: x[1:] if x.startswith('-') else x, order_by)
         if len(set(order_by) - set(order_fields)) != 0:
             raise FieldNotFoundError

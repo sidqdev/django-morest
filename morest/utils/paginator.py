@@ -17,15 +17,10 @@ class PaginatedSerializedData:
 
 
 class PaginationSerializer(serializers.Serializer):
-    rows_name = 'rows'
-
     page = serializers.IntegerField(required=False, min_value=1, write_only=True)
     limit = serializers.IntegerField(required=False, min_value=1, write_only=True)
 
-    def paginate(self, qs: typing.Union[BaseManager[T], typing.List[T]], serializer: serializers.Serializer = None, rows_name: str = None, **kwargs) -> PaginatedSerializedData:
-        if rows_name is None:
-            rows_name = self.rows_name
-
+    def paginate(self, qs: typing.Union[BaseManager[T], typing.List[T]], serializer: serializers.Serializer = None, rows_name: str = "rows", serializer_context: dict = None) -> PaginatedSerializedData:
         page = self.validated_data.get('page', 1)
         limit = self.validated_data.get('limit', 20)
 
@@ -40,7 +35,7 @@ class PaginationSerializer(serializers.Serializer):
         else:
             raise InternalError
         
-        obj_serializer = lambda obj: serializer().to_representation(obj, **kwargs) if serializer is not None else obj 
+        obj_serializer = lambda obj: serializer(context=serializer_context).to_representation(obj) if serializer is not None else obj 
 
         data = PaginatedSerializedData(
             rows=[obj_serializer(x) for x in rows],

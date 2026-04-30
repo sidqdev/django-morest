@@ -1,5 +1,20 @@
 from rest_framework import serializers
 from morest.utils import PaginationSerializer
+from drf_yasg.views import get_schema_view # new
+from drf_yasg import openapi # new
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import IsAdminUser
+
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Swagger API",
+        default_version='v1',
+    ),
+    public=True,
+    authentication_classes=(SessionAuthentication,),
+    permission_classes=(IsAdminUser,)
+)
 
 
 def __build_response_serializer(serializer, many: bool = False) -> serializers.Serializer:
@@ -47,7 +62,7 @@ def schema(request_body: serializers.Serializer = None, request_query: serialize
         if paginated_request:
             response_serializer = __build_response_serializer(
                 __build_paginator_serializer(
-                    rows_name=paginated_request[0].rows_name,
+                    rows_name=kwargs.pop("paginated_rows_name", "rows"),
                     serializer=response
                 )
             )
