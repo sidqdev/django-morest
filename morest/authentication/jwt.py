@@ -8,13 +8,13 @@ from rest_framework.authentication import BaseAuthentication, get_authorization_
 from morest.core import JWTManager, JWTPair
 
 
-def get_jwt_manager() -> JWTManager:
+def get_jwt_manager(cls: JWTManager = JWTManager) -> JWTManager:
     access_token_secret = getattr(settings, "JWT_ACCESS_TOKEN_SECRET", None)
     refresh_token_secret = getattr(settings, "JWT_REFRESH_TOKEN_SECRET", None)
     if access_token_secret is None or refresh_token_secret is None:
         raise Exception("JWT_ACCESS_TOKEN_SECRET and JWT_REFRESH_TOKEN_SECRET are required to use JWT auth")
     
-    return JWTManager(
+    return cls(
         access_token_secret=access_token_secret,
         refresh_token_secret=refresh_token_secret,
         access_token_ttl=getattr(settings, "JWT_ACCESS_TOKEN_TTL", None),

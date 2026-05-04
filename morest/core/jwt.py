@@ -1,7 +1,6 @@
 import jwt
 import time
 from dataclasses import dataclass
-from morest.errors import AccessTokenIsInvalidError, RefreshTokenIsInvalidError
 
 
 @dataclass
@@ -47,10 +46,15 @@ class JWTManager:
             ),
         )
 
+    def _process_pk_on_refresh(self, pk):
+        return pk
+
     def refresh(self, refresh_token: str) -> JWTPair:
-        return self.create_jwt_pair(pk=self.authorize_refresh_token(refresh_token=refresh_token))
+        return self.create_jwt_pair(pk=self._process_pk_on_refresh(self.authorize_refresh_token(refresh_token=refresh_token)))
 
     def authorize_access_token(self, access_token: str):
+        from morest.errors import AccessTokenIsInvalidError
+
         '''Returns pk'''
         try:
             payload = jwt.decode(
@@ -73,6 +77,8 @@ class JWTManager:
         return payload['pk']
 
     def authorize_refresh_token(self, refresh_token: str):
+        from morest.errors import RefreshTokenIsInvalidError
+
         '''Returns pk'''
         try:
             payload = jwt.decode(
@@ -93,6 +99,3 @@ class JWTManager:
             raise RefreshTokenIsInvalidError
 
         return payload['pk']
-
-
-from rest_framework.authentication import TokenAuthentication
