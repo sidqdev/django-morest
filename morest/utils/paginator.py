@@ -1,6 +1,6 @@
 import math
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, make_dataclass
 from rest_framework import serializers
 from django.db.models.manager import BaseManager
 from django.db.models.query import QuerySet
@@ -37,13 +37,22 @@ class PaginationSerializer(serializers.Serializer):
         
         obj_serializer = lambda obj: serializer(context=serializer_context).to_representation(obj) if serializer is not None else obj 
 
-        data = PaginatedSerializedData(
-            rows=[obj_serializer(x) for x in rows],
-            rows_count=len(rows),
-            total_count=total_rows_count,
-            pages_count=math.ceil(total_rows_count/limit)
+        PaginatedData = make_dataclass(
+            "PaginatedSerializedData",
+            [
+                (rows_name, list),
+                ("rows_count", int),
+                ("total_count", int),
+                ("pages_count", int),
+            ],
         )
-        data.__dataclass_fields__['rows'].name = rows_name
-        setattr(data, rows_name, data.rows)
-        return data
+
+        return PaginatedData(
+            **{
+                rows_name: [obj_serializer(x) for x in rows],
+                "rows_count": len(rows),
+                "total_count": total_rows_count,
+                "pages_count": math.ceil(total_rows_count/limit),
+            }
+        )
 
