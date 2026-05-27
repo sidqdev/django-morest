@@ -106,8 +106,8 @@ class ListFilterView(APIView):
         try:
             class viewcls(cls):
                 @docs.schema(request_query=cls.filter_serializer, response=cls.get_serializer(cls, None), paginated_rows_name=cls.rows_name)
-                def get(self, request):
-                    return super().get(request)
+                def get(self, *args, **kwargs):
+                    return super().get(*args, **kwargs)
             cls = viewcls
         except ImportError:
             pass
