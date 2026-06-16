@@ -9,6 +9,7 @@
 - list/filter API views
 - schema and Swagger helpers for `drf-yasg`
 - JWT and bearer-token authentication helpers
+- Cloudflare Turnstile captcha validation helpers
 - a simple encrypted text model field
 
 ## Installation
@@ -315,6 +316,7 @@ All `BaseError` subclasses can be raised inside views or helper functions. `Exce
 - `FieldNotFoundError` -> HTTP `406`
 - `AccessTokenIsInvalidError` -> HTTP `401`
 - `RefreshTokenIsInvalidError` -> HTTP `401`
+- `CaptchaTokenIsInvalidError` -> HTTP `406`
 
 ### Raise a built-in error
 
@@ -402,6 +404,94 @@ Example 404 body:
 ```
 
 Note: place `morest.middlewares.ExceptionMiddleware` near the top of `MIDDLEWARE`. Exceptions raised by middleware that runs before it will not be normalized by `morest`.
+
+## Cloudflare Turnstile Captcha
+
+`morest` includes a small serializer and service for validating Cloudflare Turnstile tokens before the rest of a request body is processed.
+
+Configure your Cloudflare Turnstile secret key in Django settings.
+
+```python
+CLOUDFLARE_CAPTCHA_SECRET_KEY = "your-cloudflare-turnstile-secret-key"
+```
+
+For local development, tests, or trusted internal clients, you can optionally configure a super token. When the incoming `captcha_token` matches this value, the remote Cloudflare verification request is skipped.
+
+```python
+CLOUDFLARE_CAPTCHA_SUPER_TOKEN = "local-development-token"
+```
+
+Use `CloudflareCaptchaSerializer` as a base class for request serializers that must include a captcha token.
+
+```python
+from rest_framework import serializers
+from morest.serializers import CloudflareCaptchaSerializer
+
+
+class ContactFormSerializer(CloudflareCaptchaSerializer):
+    email = serializers.EmailField()
+    message = serializers.CharField()
+```
+
+Validate it in a view the same way as any DRF serializer.
+
+```python
+from rest_framework.views import APIView
+from morest.api import Response
+
+
+class ContactFormView(APIView):
+    def post(self, request):
+        serializer = ContactFormSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response.validation_error(serializer.errors)
+
+        data = serializer.validated_data
+        ...
+        return Response.from_status("ok")
+```
+
+Expected request body:
+
+```json
+{
+  "captcha_token": "turnstile-client-token",
+  "email": "john@example.com",
+  "message": "Hello"
+}
+```
+
+`captcha_token` is validated first in `to_internal_value()` and is removed from `validated_data`. If the token is invalid, `CaptchaTokenIsInvalidError` is raised and normalized by `ExceptionMiddleware` into a `406` response.
+
+Example invalid-token response:
+
+```json
+{
+  "data": null,
+  "status": "captcha_token_is_invalid",
+  "status_code": 406,
+  "request_id": "4d06538d2d7b40db8e729757a363fe55",
+  "message": "Captcha token is invalid",
+  "error_details": {
+    "captcha_token": "Captcha token is invalid"
+  }
+}
+```
+
+You can also use the service directly when serializer inheritance is not suitable.
+
+```python
+from django.conf import settings
+from morest.services import CloudflareCaptchaService
+
+
+captcha = CloudflareCaptchaService(
+    secret_key=settings.CLOUDFLARE_CAPTCHA_SECRET_KEY,
+    super_token=getattr(settings, "CLOUDFLARE_CAPTCHA_SUPER_TOKEN", None),
+)
+
+is_valid = captcha.verify(token="turnstile-client-token")
+```
 
 ## List and Filter Views
 
@@ -995,6 +1085,8 @@ from morest.api import Response
 from morest.authentication import BearerTokenAuthentication, JWTAuthentication, get_jwt_manager
 from morest.core import JWTManager, JWTPair, docs, get_queryset, search_in_queryset, MorestJSONEncoder, presettings
 from morest.errors import *
+from morest.serializers import CloudflareCaptchaSerializer
+from morest.services import CloudflareCaptchaService
 from morest.utils import PaginationSerializer, SearchSerializer, OrderSerializer, PaginationSearchSerializer
 from morest.views import ListFilterView, AdminFormView, RefreshTokenView
 ```

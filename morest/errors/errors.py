@@ -72,3 +72,11 @@ class FieldNotFoundError(BaseError):
     message = 'Field not found'
     status = 'field_not_found'
     
+
+class CaptchaTokenIsInvalidError(BaseError):
+    status_code = status.HTTP_406_NOT_ACCEPTABLE
+    message = 'Captcha token is invalid'
+    status = 'captcha_token_is_invalid'
+    error_details = {
+        "captcha_token": "Captcha token is invalid"
+    }
