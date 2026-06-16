@@ -13,7 +13,7 @@ project_urls = {
 
 setup(
     name='django-morest',
-    version='0.2.4',
+    version='0.2.5',
     author='Sidq',
     author_email='abba.dmytro@gmail.com',
     description='Django api manager and unifier',
